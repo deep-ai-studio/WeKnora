@@ -14,8 +14,8 @@ conversation:
   rerank_threshold: 0.3
   rerank_top_k: 30
   fallback_strategy: "model"
-  fallback_response: "Sorry, I am unable to answer this question."
-  fallback_prompt_id: "default_fallback_prompt"  # from prompt_templates/fallback.yaml (mode: "model")
+  fallback_response: "抱歉，我在当前知识库中没有找到与您问题直接相关的资料。您可以尝试换一种方式描述问题，或联系在线客服获取一对一咨询。"
+  fallback_prompt_id: "beauty_fallback_prompt"  # 医美模型兜底（from prompt_templates/fallback.yaml）
   enable_rewrite: true
   enable_query_expansion: true
   enable_rerank: true
@@ -31,8 +31,8 @@ conversation:
       <think>
       </think>
       NO_MATCH
-    prompt_id: "default_kb"  # from prompt_templates/system_prompt.yaml
-    context_template_id: "default_context"  # from prompt_templates/context_template.yaml
+    prompt_id: "beauty_patient"  # 医美患者端 prompt（from prompt_templates/system_prompt.yaml）
+    context_template_id: "beauty_context"  # 医美知识库上下文（from prompt_templates/context_template.yaml）
   extract_entities_prompt_id: "default_extract_entities"          # from prompt_templates/graph_extraction.yaml
   extract_relationships_prompt_id: "default_extract_relationships"  # from prompt_templates/graph_extraction.yaml
   generate_questions_prompt_id: "default_generate_questions"        # from prompt_templates/generate_questions.yaml

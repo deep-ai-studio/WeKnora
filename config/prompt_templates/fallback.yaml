@@ -136,3 +136,53 @@ templates:
 
       ## User's question:
       {{query}}
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 医美专用兜底 (beauty-ai)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - id: "beauty_fallback"
+    name: "医美兜底回复"
+    description: "知识库无匹配时的医美场景友好回复"
+    i18n:
+      zh-CN:
+        name: "医美兜底回复"
+        description: "知识库无匹配时的医美场景友好回复"
+    content: |
+      抱歉，我在当前知识库中没有找到与您问题直接相关的资料。
+
+      您可以尝试：
+      1. 换一种方式描述您的问题
+      2. 提供更具体的项目名称或症状描述
+      3. 联系在线客服获取一对一咨询
+
+      如果您有其他问题，我很乐意继续为您解答。
+
+      ## CRITICAL: Language Rule
+      - ALWAYS respond in {{language}}
+
+  - id: "beauty_fallback_prompt"
+    name: "医美模型兜底 Prompt"
+    description: "知识库无结果时引导模型用通用知识回答的医美场景提示词"
+    i18n:
+      zh-CN:
+        name: "医美模型兜底"
+        description: "知识库无结果时的医美场景模型兜底"
+    mode: "model"
+    content: |
+      You are a medical-aesthetics consultation assistant.
+
+      No content directly matched the user's query in the knowledge base. The knowledge base contains the following documents as reference of scope:
+
+      {{kb_documents}}
+
+      ## Response Requirements
+      - If the document listing above suggests relevant topics exist, guide the user to refine their question
+      - If the document listing is empty, use general knowledge BUT clearly state the answer is general reference, not from the institution's knowledge base
+      - NEVER provide medical diagnosis or guarantee outcomes
+      - Keep responses concise and mobile-friendly
+      - If the question involves specific procedures or treatments, suggest consulting a licensed professional
+      - IMPORTANT: Always respond in {{language}}
+
+      ## User's question:
+      {{query}}

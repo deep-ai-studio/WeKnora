@@ -104,3 +104,33 @@ templates:
       - If the materials do not contain relevant information, state so
       - Keep the answer concise and accurate
       - IMPORTANT: ALWAYS respond in {{language}}
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # 医美知识库专用 (beauty-ai)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  - id: "beauty_context"
+    name: "医美知识库上下文模板"
+    description: "为医美场景优化的检索上下文格式，标注来源文档和页码"
+    i18n:
+      zh-CN:
+        name: "医美知识库上下文"
+        description: "为医美场景优化的检索上下文格式"
+    has_knowledge_base: true
+    content: |
+      [知识库检索结果 — 仅供参考，不代表医疗建议]
+      检索时间: {{current_time}} {{current_week}}
+
+      以下是从机构知识库中检索到的相关资料：
+
+      {{contexts}}
+
+      ---
+      用户问题: {{query}}
+
+      请基于以上资料回答。要求：
+      - 仅基于上述资料回答，不编造信息
+      - 如果资料不足以回答，请如实说明
+      - 回答简洁准确、便于移动端阅读
+      - 涉及手术/治疗类问题，需提及适应症和风险
+      - CRITICAL: 必须使用 {{language}} 回复

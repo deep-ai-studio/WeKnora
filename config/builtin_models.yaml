@@ -1,0 +1,37 @@
+# WeKnora — 医美知识库专用模型配置
+# 使用阿里云 DashScope (Qwen) API
+
+builtin_models:
+  # ── LLM 对话模型 ──
+  - id: builtin-qwen-chat
+    type: KnowledgeQA
+    source: remote
+    is_default: true
+    name: qwen-plus
+    parameters:
+      base_url: ${QWEN_BASE_URL}
+      api_key: ${QWEN_API_KEY}
+      provider: openai          # DashScope 兼容 OpenAI 协议
+
+  # ── Embedding 向量模型 ──
+  - id: builtin-qwen-embedding
+    type: Embedding
+    source: remote
+    is_default: true
+    name: text-embedding-v3
+    parameters:
+      base_url: ${QWEN_BASE_URL}
+      api_key: ${QWEN_API_KEY}
+      provider: openai
+      embedding_parameters:
+        dimension: 1024
+        truncate_prompt_tokens: 0
+
+  # ── Rerank 重排序（可选，无可用 rerank API 时注释掉） ──
+  # - id: builtin-qwen-rerank
+  #   type: Rerank
+  #   source: remote
+  #   parameters:
+  #     base_url: ${QWEN_BASE_URL}
+  #     api_key: ${QWEN_API_KEY}
+  #     provider: openai
