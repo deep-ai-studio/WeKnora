@@ -923,7 +923,9 @@ export default {
     roleDenied: {
       title: "权限不足",
       desc: "你当前的角色无权访问此设置项。请联系本空间的管理员获取所需角色。",
-    },    weknoraCloud: {
+    },
+    simpleMode: "简洁模式",
+    simpleModeDesc: "开启后仅显示知识库和对话等核心功能，隐藏智能体、共享空间及其他高级设置。关闭后可恢复全部功能。",    weknoraCloud: {
       title: "WeKnora Cloud",
       description: "配置 WeKnora Cloud 的 APPID 和 APPSECRET 凭证。凭证用于模型服务和文档解析引擎。",
       viewDocs: "查看文档",

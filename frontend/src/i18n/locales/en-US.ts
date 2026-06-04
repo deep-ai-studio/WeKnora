@@ -1067,6 +1067,8 @@ export default {
       title: 'Insufficient permissions',
       desc: "Your role can't access this settings page. Ask an admin of this tenant to grant the required role.",
     },
+    simpleMode: "Simple Mode",
+    simpleModeDesc: "Show only core features (Knowledge Bases & Chat). Hide Agents, Shared Spaces, and advanced settings. Disable to restore all features.",
     weknoraCloud: {
       title: 'WeKnora Cloud',
       description: 'Configure WeKnora Cloud APPID and APPSECRET credentials. Credentials are used for model services and document parsing engine.',

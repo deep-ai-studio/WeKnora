@@ -20,7 +20,9 @@ export const useUIStore = defineStore('ui', {
     manualEditorInitialContent: '',
     manualEditorInitialStatus: 'draft' as 'draft' | 'publish',
     manualEditorOnSuccess: null as null | ((payload: { kbId: string; knowledgeId: string; status: 'draft' | 'publish' }) => void),
-    sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true'
+    sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === 'true',
+    // 简洁模式：关闭后隐藏智能体、共享空间，设置中仅保留用户信息
+    simpleMode: localStorage.getItem('simple_mode') !== 'false'
   }),
 
   actions: {
@@ -124,6 +126,11 @@ export const useUIStore = defineStore('ui', {
     expandSidebar() {
       this.sidebarCollapsed = false
       localStorage.setItem('sidebar_collapsed', 'false')
+    },
+
+    toggleSimpleMode() {
+      this.simpleMode = !this.simpleMode
+      localStorage.setItem('simple_mode', String(this.simpleMode))
     }
   }
 })

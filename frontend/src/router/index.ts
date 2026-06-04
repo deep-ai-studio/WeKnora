@@ -339,6 +339,15 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+  // 简洁模式：阻止直接访问智能体和共享空间路由
+  if (localStorage.getItem('simple_mode') !== 'false') {
+    const simpleModeRestricted = ['/platform/agents', '/platform/organizations']
+    if (simpleModeRestricted.includes(to.path)) {
+      next('/platform/knowledge-bases')
+      return
+    }
+  }
+
   next()
 })
 

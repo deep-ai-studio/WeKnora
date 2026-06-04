@@ -270,6 +270,13 @@ const canSeeSection = (key: string): boolean => {
 }
 
 const navItems = computed(() => {
+  // 简洁模式：仅显示用户信息
+  if (uiStore.simpleMode) {
+    return [
+      { key: 'userprofile', icon: 'user', label: t('userProfile.title') },
+    ]
+  }
+
   // 一律走 SECTION_MIN_ROLE 表，避免 ad-hoc isAdmin/isOwner 散落在多处。
   // 服务端在每条路由上仍以 g.Viewer/Admin/Owner 为准，这里只决定 UI 是
   // 否露入口；改动入口规则请同步更新 SECTION_MIN_ROLE 注释里的对照路由。

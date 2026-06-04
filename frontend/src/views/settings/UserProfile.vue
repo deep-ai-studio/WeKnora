@@ -65,6 +65,21 @@
           <span class="info-value">{{ formatDate(userInfo?.created_at) }}</span>
         </div>
       </div>
+
+      <!-- 简洁模式开关 -->
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>{{ $t('settings.simpleMode') }}</label>
+          <p class="desc">{{ $t('settings.simpleModeDesc') }}</p>
+        </div>
+        <div class="setting-control">
+          <t-switch
+            :value="uiStore.simpleMode"
+            @change="uiStore.toggleSimpleMode"
+            size="large"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -72,9 +87,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getCurrentUser, type UserInfo } from '@/api/auth'
+import { useUIStore } from '@/stores/ui'
 import { useI18n } from 'vue-i18n'
 
 const { t, locale } = useI18n()
+const uiStore = useUIStore()
 
 const userInfo = ref<UserInfo | null>(null)
 const loading = ref(true)

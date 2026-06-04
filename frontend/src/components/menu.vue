@@ -43,9 +43,8 @@
 
         <!-- 上半部分：知识库和对话 -->
         <div class="menu_top">
-            <!-- 全局搜索入口：点击打开命令面板（⌘K）。放在一级导航最上方，
-                 展开态展示快捷键提示，折叠态仅图标 + tooltip。 -->
-            <div class="menu_box menu_box--cmdk">
+            <!-- 全局搜索入口：点击打开命令面板（⌘K）。简洁模式下隐藏。 -->
+            <div v-if="!uiStore.simpleMode" class="menu_box menu_box--cmdk">
                 <t-tooltip :content="cmdkTooltip" placement="right" :disabled="!uiStore.sidebarCollapsed">
                     <div class="menu_item menu_item--cmdk" @click="commandPaletteStore.openPalette('')">
                         <div class="menu_item-box">

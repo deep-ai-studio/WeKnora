@@ -27,11 +27,25 @@ builtin_models:
         dimension: 1024
         truncate_prompt_tokens: 0
 
-  # ── Rerank 重排序（可选，无可用 rerank API 时注释掉） ──
-  # - id: builtin-qwen-rerank
-  #   type: Rerank
-  #   source: remote
-  #   parameters:
-  #     base_url: ${QWEN_BASE_URL}
-  #     api_key: ${QWEN_API_KEY}
-  #     provider: openai
+  # ── VLLM 视觉模型（扫描PDF OCR）──
+  - id: builtin-qwen-vl
+    type: VLLM
+    source: remote
+    is_default: false
+    name: qwen-vl-plus
+    parameters:
+      base_url: ${QWEN_BASE_URL}
+      api_key: ${QWEN_API_KEY}
+      provider: openai
+
+  # ── Rerank 重排序 ──
+  # 阿里 DashScope Rerank API 使用独立端点（非 OpenAI 兼容），
+  # provider 设置为 aliyun，代码将自动使用正确的 Rerank URL。
+  - id: builtin-qwen-rerank
+    type: Rerank
+    source: remote
+    is_default: true
+    name: gte-rerank
+    parameters:
+      api_key: ${QWEN_API_KEY}
+      provider: aliyun

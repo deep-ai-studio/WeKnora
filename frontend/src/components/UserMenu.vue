@@ -42,7 +42,7 @@
           </div>
         </div>
 
-        <div v-if="userName && !authStore.isLiteMode" ref="tenantMenuItemRef" class="dropdown-tenant-panel" :class="{
+        <div v-if="userName && !authStore.isLiteMode && !uiStore.simpleMode" ref="tenantMenuItemRef" class="dropdown-tenant-panel" :class="{
           'is-open': tenantSubmenuOpen,
           'is-clickable': showTenantSwitcher,
         }" @mouseenter="showTenantSwitcher && showTenantSubmenu()"
@@ -66,6 +66,19 @@
              分别对应 viewer/viewer/admin/admin/owner（详情见 Settings.vue 的
              SECTION_MIN_ROLE）。低角色用户看到这些入口点进去也只能看到
              role-denied 兜底页，索性藏起来。 -->
+        <!-- 简洁模式：仅显示用户信息和退出 -->
+        <template v-if="uiStore.simpleMode">
+          <div class="menu-item" @click="handleQuickNav('userprofile')">
+            <t-icon name="user" class="menu-icon" />
+            <span>{{ $t('userProfile.title') }}</span>
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item danger" @click="handleLogout">
+            <t-icon name="logout" class="menu-icon" />
+            <span>{{ $t('auth.logout') }}</span>
+          </div>
+        </template>
+        <template v-else>
         <div v-if="canSeeQuickNav('members')" class="menu-item" @click="handleQuickNav('members')">
           <t-icon name="usergroup" class="menu-icon" />
           <span>{{ $t('tenantMember.title') }}</span>
@@ -165,6 +178,7 @@
             <t-icon name="logout" class="menu-icon" />
             <span>{{ $t('auth.logout') }}</span>
           </div>
+        </template>
         </template>
       </div>
     </Transition>
