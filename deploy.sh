@@ -82,7 +82,7 @@ if [ "$MODE" != "update" ]; then
         log ".env 已存在，跳过"
 
         # 确保关键配置存在
-        if ! grep -q "MAX_FILE_SIZE_MB" .env; then
+        if ! grep -q "^MAX_FILE_SIZE_MB=" .env; then
             echo "MAX_FILE_SIZE_MB=200" >> .env
             log "已添加 MAX_FILE_SIZE_MB=200"
         fi
@@ -128,44 +128,69 @@ if [ "$FRONTEND_ONLY" = false ]; then
     done
 
     # ──────────────────────────────────────────────
-    # 4. 注入 VLM 模型到数据库（如果尚未添加）
+    # 4. 注入内置模型到数据库（来自 config/builtin_models.yaml）
     # ──────────────────────────────────────────────
-    log "检查 VLM 模型..."
-    VLM_EXISTS=$(docker exec WeKnora-postgres psql -U weknora -d weknora -tAc \
-        "SELECT COUNT(*) FROM models WHERE id = 'builtin-qwen-vl';" 2>/dev/null || echo "0")
+    # 从 .env 读取数据库连接信息和 API 配置
+    DB_USER=$(grep '^DB_USER=' .env | cut -d= -f2-)
+    DB_NAME=$(grep '^DB_NAME=' .env | cut -d= -f2-)
+    QWEN_API_KEY=$(grep '^QWEN_API_KEY=' .env | cut -d= -f2-)
+    QWEN_BASE_URL=$(grep '^QWEN_BASE_URL=' .env | cut -d= -f2-)
 
-    if [ "$VLM_EXISTS" = "0" ]; then
-        log "添加 VLM 视觉模型 (qwen-vl-plus)..."
-        QWEN_API_KEY=$(grep QWEN_API_KEY .env | cut -d= -f2)
-        QWEN_BASE_URL=$(grep QWEN_BASE_URL .env | cut -d= -f2)
-
-        docker exec WeKnora-postgres psql -U weknora -d weknora -c "
+    # 使用 ON CONFLICT 实现幂等插入，首次部署和后续更新均可用
+    inject_model() {
+        local mid="$1" mname="$2" mtype="$3" mparams="$4" mis_default="$5"
+        log "  注入模型: ${mname} (${mtype})..."
+        docker exec WeKnora-postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-WeKnora}" -c "
             INSERT INTO models (id, tenant_id, name, type, source, parameters, is_default, is_builtin, status)
-            VALUES (
-                'builtin-qwen-vl', 10000, 'qwen-vl-plus', 'VLLM', 'remote',
-                '{\"api_key\": \"${QWEN_API_KEY}\", \"base_url\": \"${QWEN_BASE_URL}\", \"provider\": \"openai\"}',
-                false, true, 'active'
-            );
+            VALUES ('${mid}', 10000, '${mname}', '${mtype}', 'remote', '${mparams}', ${mis_default}, true, 'active')
+            ON CONFLICT (id) DO UPDATE SET
+                name = EXCLUDED.name,
+                type = EXCLUDED.type,
+                parameters = EXCLUDED.parameters,
+                is_default = EXCLUDED.is_default,
+                is_builtin = EXCLUDED.is_builtin,
+                status = EXCLUDED.status,
+                deleted_at = NULL;
         " 2>/dev/null
+    }
 
-        # 启用知识库 VLM（找到第一个知识库）
-        KB_ID=$(docker exec WeKnora-postgres psql -U weknora -d weknora -tAc \
-            "SELECT id FROM knowledge_bases LIMIT 1;" 2>/dev/null)
-        if [ -n "$KB_ID" ]; then
-            docker exec WeKnora-postgres psql -U weknora -d weknora -c "
-                UPDATE knowledge_bases SET vlm_config = '{
-                    \"enabled\": true,
-                    \"model_id\": \"builtin-qwen-vl\",
-                    \"model_name\": \"qwen-vl-plus\",
-                    \"base_url\": \"${QWEN_BASE_URL}\",
-                    \"api_key\": \"${QWEN_API_KEY}\",
-                    \"interface_type\": \"openai\"
-                }' WHERE id = '${KB_ID}';
-            " 2>/dev/null
-            log "VLM 模型已添加并绑定到知识库 ✓"
-        fi
-    else
-        log "VLM 模型已存在，跳过"
+    # LLM 对话模型 (KnowledgeQA)
+    inject_model "builtin-qwen-chat" "qwen-plus" "KnowledgeQA" \
+        "{\"base_url\": \"${QWEN_BASE_URL}\", \"api_key\": \"${QWEN_API_KEY}\", \"provider\": \"openai\"}" \
+        "true"
+
+    # Embedding 向量模型
+    inject_model "builtin-qwen-embedding" "text-embedding-v3" "Embedding" \
+        "{\"base_url\": \"${QWEN_BASE_URL}\", \"api_key\": \"${QWEN_API_KEY}\", \"provider\": \"openai\", \"embedding_parameters\": {\"dimension\": 1024, \"truncate_prompt_tokens\": 0}}" \
+        "true"
+
+    # VLLM 视觉模型（扫描件 OCR）
+    inject_model "builtin-qwen-vl" "qwen-vl-plus" "VLLM" \
+        "{\"base_url\": \"${QWEN_BASE_URL}\", \"api_key\": \"${QWEN_API_KEY}\", \"provider\": \"openai\"}" \
+        "false"
+
+    # Rerank 重排序模型
+    inject_model "builtin-qwen-rerank" "gte-rerank" "Rerank" \
+        "{\"api_key\": \"${QWEN_API_KEY}\", \"provider\": \"aliyun\"}" \
+        "true"
+
+    log "内置模型注入完成（4个模型） ✓"
+
+    # 启用知识库 VLM（找到第一个知识库并绑定视觉模型）
+    KB_ID=$(docker exec WeKnora-postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-WeKnora}" -tAc \
+        "SELECT id FROM knowledge_bases LIMIT 1;" 2>/dev/null)
+    if [ -n "$KB_ID" ]; then
+        docker exec WeKnora-postgres psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-WeKnora}" -c "
+            UPDATE knowledge_bases SET vlm_config = '{
+                \"enabled\": true,
+                \"model_id\": \"builtin-qwen-vl\",
+                \"model_name\": \"qwen-vl-plus\",
+                \"base_url\": \"${QWEN_BASE_URL}\",
+                \"api_key\": \"${QWEN_API_KEY}\",
+                \"interface_type\": \"openai\"
+            }' WHERE id = '${KB_ID}';
+        " 2>/dev/null
+        log "VLM 模型已绑定到知识库 ✓"
     fi
 fi
 
