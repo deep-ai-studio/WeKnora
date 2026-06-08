@@ -1,13 +1,13 @@
-# Build stage
-FROM golang:1.26-bookworm AS builder
+# Build stage（默认走国内镜像源，降低 Docker Hub 网络失败概率）
+FROM docker.m.daocloud.io/library/golang:1.26-bookworm AS builder
 
 WORKDIR /app
 
 # 通过构建参数接收敏感信息
 ARG GOPRIVATE_ARG
-ARG GOPROXY_ARG
+ARG GOPROXY_ARG=https://goproxy.io,https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct
 ARG GOSUMDB_ARG=off
-ARG APK_MIRROR_ARG
+ARG APK_MIRROR_ARG=mirrors.aliyun.com
 
 # 设置Go环境变量
 ENV GOPRIVATE=${GOPRIVATE_ARG}
@@ -47,8 +47,8 @@ ENV GO_VERSION=${GO_VERSION_ARG}
 RUN --mount=type=cache,target=/go/pkg/mod make build-prod
 RUN --mount=type=cache,target=/go/pkg/mod cp -r /go/pkg/mod/github.com/yanyiwu/ /app/yanyiwu/
 
-# Final stage
-FROM debian:12.12-slim
+# Final stage（默认走国内镜像源）
+FROM docker.m.daocloud.io/library/debian:12.12-slim
 
 WORKDIR /app
 

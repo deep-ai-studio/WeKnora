@@ -81,6 +81,8 @@ type RouterParams struct {
 	DataSourceCredentialsHandler *handler.DataSourceCredentialsHandler
 	WeKnoraCloudHandler          *handler.WeKnoraCloudHandler
 	WikiPageHandler              *handler.WikiPageHandler
+	OpenAPIHandler               *handler.OpenAPIHandler
+	OpenAPIService               interfaces.OpenAPIService
 }
 
 // NewRouter 创建新的路由
@@ -92,7 +94,7 @@ func NewRouter(params RouterParams) *gin.Engine {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-API-Key", "X-Request-ID"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-API-Key", "X-Open-API-Key", "X-Request-ID"},
 		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -128,6 +130,9 @@ func NewRouter(params RouterParams) *gin.Engine {
 
 	// IM 回调路由（在认证中间件之前注册，使用各平台自身的签名验证）
 	RegisterIMRoutes(r, params.IMHandler)
+
+	// Open API 路由（在认证中间件之前注册，使用 X-Open-API-Key 验证）
+	RegisterOpenAPIRoutes(r, params.OpenAPIHandler, params.OpenAPIService, params.TenantService)
 
 	// 认证中间件
 	r.Use(middleware.Auth(params.TenantService, params.UserService, params.TenantMemberService, params.Config))
@@ -205,6 +210,7 @@ func NewRouter(params RouterParams) *gin.Engine {
 		RegisterDataSourceRoutes(v1, params.DataSourceHandler, params.DataSourceCredentialsHandler, rbacGuards)
 		RegisterWeKnoraCloudRoutes(v1, params.WeKnoraCloudHandler, rbacGuards)
 		RegisterWikiPageRoutes(v1, params.WikiPageHandler, rbacGuards)
+		RegisterOpenAPIAdminRoutes(v1, params.OpenAPIHandler, rbacGuards)
 		RegisterChunkerDebugRoutes(v1, rbacGuards)
 	}
 

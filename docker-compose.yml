@@ -31,7 +31,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile.app
       args:
-        - APK_MIRROR_ARG=${APK_MIRROR_ARG:-}
+        - GOPROXY_ARG=${GOPROXY:-https://goproxy.io,https://goproxy.cn,https://mirrors.aliyun.com/goproxy/,direct}
+        - APK_MIRROR_ARG=${APK_MIRROR_ARG:-mirrors.aliyun.com}
     container_name: WeKnora-app
     ports:
       - "${APP_PORT:-8080}:8080"

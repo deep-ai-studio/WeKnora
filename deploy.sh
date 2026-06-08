@@ -7,11 +7,10 @@
 #   ./deploy.sh              # 首次部署
 #   ./deploy.sh --update     # 更新已有部署（跳过 .env 配置）
 #   ./deploy.sh --frontend-only  # 仅重建前端
+#   ./deploy.sh --app-only       # 仅重建后端
 #
 # 环境要求:
 #   - Docker + Docker Compose
-#   - Node.js 18+ (用于前端本地构建，绕过 Docker Hub 拉取问题)
-#   - pnpm (脚本会自动安装)
 #
 
 set -e
@@ -35,17 +34,35 @@ step() { echo -e "\n${BLUE}==== $1 ====${NC}"; }
 # ──────────────────────────────────────────────
 MODE="full"
 FRONTEND_ONLY=false
+APP_ONLY=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --update)        MODE="update" ;;
         --frontend-only) FRONTEND_ONLY=true ;;
+        --app-only)      APP_ONLY=true ;;
         --help|-h)
-            echo "用法: $0 [--update|--frontend-only]"
+            echo "用法: $0 [--update|--frontend-only|--app-only]"
             exit 0 ;;
         *) err "未知参数: $1" && exit 1 ;;
     esac
     shift
 done
+
+if [ "$FRONTEND_ONLY" = true ] && [ "$APP_ONLY" = true ]; then
+    err "--frontend-only 与 --app-only 不能同时使用"
+    exit 1
+fi
+
+# 本地已有镜像则跳过拉取（Dockerfile 已默认指向 docker.m.daocloud.io）
+ensure_image() {
+    local ref="$1"
+    if docker image inspect "$ref" >/dev/null 2>&1; then
+        log "本地已有镜像 ${ref}，跳过拉取"
+        return 0
+    fi
+    log "本地无 ${ref}，从国内源拉取..."
+    docker pull "$ref"
+}
 
 # ──────────────────────────────────────────────
 # 1. 环境检查
@@ -92,19 +109,12 @@ fi
 # ──────────────────────────────────────────────
 # 3. 启动 Docker 服务
 # ──────────────────────────────────────────────
-if [ "$FRONTEND_ONLY" = false ]; then
+if [ "$FRONTEND_ONLY" = false ] && [ "$APP_ONLY" = false ]; then
     step "启动 Docker 服务"
 
-    # 先尝试 pull 镜像（可能失败）
-    log "拉取 Docker 镜像..."
-    docker compose pull 2>/dev/null || warn "部分镜像拉取失败（可忽略，将使用本地缓存）"
-
-    # 启动服务（不加 --build，使用已有镜像）
-    log "启动容器..."
-    docker compose up -d 2>&1 || {
+    log "启动容器（优先使用本地镜像，不强制 pull）..."
+    docker compose --profile qdrant --profile minio up -d 2>&1 || {
         err "容器启动失败"
-        err "如果是 Docker Hub 连接问题，请配置 Docker 镜像加速器："
-        err "  /etc/docker/daemon.json 中添加 registry-mirrors"
         exit 1
     }
 
@@ -195,44 +205,63 @@ if [ "$FRONTEND_ONLY" = false ]; then
 fi
 
 # ──────────────────────────────────────────────
-# 5. 前端本地构建 + 部署
+# 4.5 后端镜像构建 + 部署（Dockerfile，默认国内源）
 # ──────────────────────────────────────────────
-step "前端构建与部署"
+if [ "$FRONTEND_ONLY" = false ]; then
+    step "后端镜像构建与部署"
 
-cd "$SCRIPT_DIR/frontend"
+    ensure_image docker.m.daocloud.io/library/golang:1.26-bookworm
+    ensure_image docker.m.daocloud.io/library/debian:12.12-slim
 
-# 安装 Node 依赖
-if [ ! -d "node_modules" ]; then
-    log "安装前端依赖..."
+    log "使用 docker/Dockerfile.app 构建后端镜像..."
+    docker compose --profile qdrant --profile minio build app 2>&1 || {
+        err "后端镜像构建失败"
+        exit 1
+    }
 
-    # 确保 pnpm 可用
-    if ! command -v pnpm &> /dev/null; then
-        log "安装 pnpm..."
-        npm install -g pnpm 2>&1 | tail -1
-    fi
+    log "重建 app 容器..."
+    docker compose --profile qdrant --profile minio up -d --no-deps app 2>&1 || {
+        err "app 容器启动失败"
+        exit 1
+    }
 
-    pnpm install 2>&1 | tail -3
+    log "等待 app 就绪..."
+    for i in $(seq 1 60); do
+        if docker exec WeKnora-app curl -sf http://localhost:8080/health &> /dev/null 2>&1; then
+            log "app 就绪 ✓"
+            break
+        fi
+        sleep 3
+    done
+
+    log "后端镜像部署完成 ✓"
 fi
 
-# 构建生产包
-log "构建前端..."
-npm run build 2>&1 | tail -5
+# ──────────────────────────────────────────────
+# 5. 前端镜像构建 + 部署（Dockerfile，默认国内源）
+# ──────────────────────────────────────────────
+if [ "$APP_ONLY" = false ]; then
+    step "前端镜像构建与部署"
 
-# 部署到运行中的容器
-log "部署前端到容器..."
-docker cp dist/. WeKnora-frontend:/usr/share/nginx/html/ 2>/dev/null || {
-    err "前端容器未运行，尝试启动..."
-    docker compose up -d frontend
-    sleep 3
-    docker cp dist/. WeKnora-frontend:/usr/share/nginx/html/
-}
+    cd "$SCRIPT_DIR"
 
-# 确保 config.js 正确（容器 entrypoint 已生成，这里再确认）
-docker exec WeKnora-frontend cat /usr/share/nginx/html/config.js
+    ensure_image docker.m.daocloud.io/library/node:24-alpine
+    ensure_image docker.m.daocloud.io/library/nginx:stable-alpine
 
-log "前端部署完成 ✓"
+    log "使用 frontend/Dockerfile 构建前端镜像..."
+    docker compose build frontend 2>&1 || {
+        err "前端镜像构建失败"
+        exit 1
+    }
 
-cd "$SCRIPT_DIR"
+    log "重建 frontend 容器..."
+    docker compose up -d --no-deps frontend 2>&1 || {
+        err "前端容器启动失败"
+        exit 1
+    }
+
+    log "前端镜像部署完成 ✓"
+fi
 
 # ──────────────────────────────────────────────
 # 6. 验证
@@ -252,6 +281,6 @@ echo ""
 echo "  管理命令:"
 echo "    docker compose logs -f app       # 查看后端日志"
 echo "    docker compose logs -f frontend  # 查看前端日志"
-echo "    docker compose restart app       # 重启后端"
+echo "    ${SCRIPT_DIR}/deploy.sh --app-only       # 仅更新后端"
 echo "    ${SCRIPT_DIR}/deploy.sh --frontend-only  # 仅更新前端"
 echo ""

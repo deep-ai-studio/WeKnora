@@ -84,6 +84,8 @@ const (
 	ResponseTypeToolApprovalRequired ResponseType = "tool_approval_required"
 	// ToolApprovalResolved: user approved/rejected (or timeout); informational for UI replay
 	ResponseTypeToolApprovalResolved ResponseType = "tool_approval_resolved"
+	// OpenAPIMeta carries partner session metadata at the start of an Open API SSE stream.
+	ResponseTypeOpenAPIMeta ResponseType = "open_api_meta"
 )
 
 // StreamResponse stream response

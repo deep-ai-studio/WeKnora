@@ -1,5 +1,5 @@
-# 构建阶段
-FROM node:24-alpine AS build-stage
+# 构建阶段（默认走国内镜像源，降低 Docker Hub 网络失败概率）
+FROM docker.m.daocloud.io/library/node:24-alpine AS build-stage
 
 WORKDIR /app
 
@@ -21,8 +21,8 @@ COPY . .
 # 构建应用
 RUN npm run build
 
-# 生产阶段
-FROM nginx:stable-alpine AS production-stage
+# 生产阶段（默认走国内镜像源）
+FROM docker.m.daocloud.io/library/nginx:stable-alpine AS production-stage
 
 # 复制构建产物到nginx服务目录
 COPY --from=build-stage /app/dist /usr/share/nginx/html

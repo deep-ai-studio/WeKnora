@@ -187,6 +187,27 @@ func (h *Handler) createAssistantMessage(ctx context.Context, assistantMessage *
 	return h.messageService.CreateMessage(ctx, assistantMessage)
 }
 
+// SetSSEHeaders sets standard Server-Sent Events response headers.
+func SetSSEHeaders(c *gin.Context) {
+	setSSEHeaders(c)
+}
+
+// BuildStreamResponse constructs a StreamResponse from a StreamEvent (web + Open API SSE).
+func BuildStreamResponse(evt interfaces.StreamEvent, requestID string) *types.StreamResponse {
+	return buildStreamResponse(evt, requestID)
+}
+
+// AppendAgentQueryEvent writes the initial agent_query stream event.
+func AppendAgentQueryEvent(ctx context.Context, streamManager interfaces.StreamManager, sessionID, assistantMessageID string) {
+	agentQueryEvent := createAgentQueryEvent(sessionID, assistantMessageID)
+	if err := streamManager.AppendEvent(ctx, sessionID, assistantMessageID, agentQueryEvent); err != nil {
+		logger.ErrorWithFields(ctx, err, map[string]interface{}{
+			"session_id": sessionID,
+			"message_id": assistantMessageID,
+		})
+	}
+}
+
 // setupStreamHandler creates and subscribes a stream handler
 func (h *Handler) setupStreamHandler(
 	ctx context.Context,
