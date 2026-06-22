@@ -238,14 +238,22 @@ if [ "$FRONTEND_ONLY" = false ]; then
 fi
 
 # ──────────────────────────────────────────────
-# 5. 前端镜像构建 + 部署（Dockerfile，默认国内源）
+# 5. 前端静态资源构建 + 镜像打包 + 部署
 # ──────────────────────────────────────────────
 if [ "$APP_ONLY" = false ]; then
     step "前端镜像构建与部署"
 
     cd "$SCRIPT_DIR"
 
-    ensure_image docker.m.daocloud.io/library/node:24-alpine
+    # 先构建前端静态资源（需 Node.js）
+    if [ -f scripts/build_frontend_dist.sh ]; then
+        log "构建前端静态资源..."
+        bash scripts/build_frontend_dist.sh 2>&1 || {
+            err "前端静态资源构建失败"
+            exit 1
+        }
+    fi
+
     ensure_image docker.m.daocloud.io/library/nginx:stable-alpine
 
     log "使用 frontend/Dockerfile 构建前端镜像..."
